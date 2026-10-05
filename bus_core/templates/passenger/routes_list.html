@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Transit Routes & Timetables - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-diagram-3 text-primary me-2"></i>Public Bus Routes & Timetables</h3>
+            <p class="text-muted mb-0">Browse transit corridors, ordered stop sequences, and scheduled departures across Kathmandu.</p>
+        </div>
+        <a href="{% url 'route_search' %}" class="btn btn-primary">
+            <i class="bi bi-signpost-split me-1"></i>Plan a Journey
+        </a>
+    </div>
+
+    <!-- Routes Accordion / List -->
+    <div class="row g-4">
+        {% for item in routes %}
+            {% with r=item.route stops=item.stops schedules=item.schedules %}
+            <div class="col-12" id="route-{{ r.route_id }}">
+                <div class="card card-modern p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary fs-5 px-3 py-2">{{ r.route_number }}</span>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">{{ r.route_name }}</h5>
+                                <small class="text-muted">Route Code: {{ r.route_id }}</small>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <span class="badge bg-light text-dark border px-3 py-2">
+                                <i class="bi bi-speedometer2 me-1"></i>{{ r.total_distance_km }} km
+                            </span>
+                            <span class="badge bg-light text-dark border px-3 py-2">
+                                <i class="bi bi-clock me-1"></i>~{{ r.estimated_duration_mins }} mins
+                            </span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                                <i class="bi bi-cash me-1"></i>Rs. {{ r.base_fare|floatformat:0 }} Base
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Stop Sequence Tags -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary mb-2">Transit Stop Sequence ({{ stops|length }} Stops):</label>
+                        <div class="d-flex flex-wrap align-items-center gap-1">
+                            {% for s in stops %}
+                                <span class="badge {% if forloop.first %}bg-success{% elif forloop.last %}bg-danger{% else %}bg-secondary-subtle text-dark border{% endif %} p-2">
+                                    {{ forloop.counter }}. {{ s.name }}
+                                </span>
+                                {% if not forloop.last %}
+                                    <i class="bi bi-arrow-right text-muted small px-1"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Departures -->
+                    {% if schedules %}
+                        <div class="mt-3 pt-3 border-top">
+                            <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-calendar3 me-2"></i>Active Scheduled Runs:</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover table-modern mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Schedule ID</th>
+                                            <th>Departure</th>
+                                            <th>Est. Arrival</th>
+                                            <th>Headway Frequency</th>
+                                            <th>Operates</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sch in schedules %}
+                                        <tr>
+                                            <td><code>{{ sch.schedule_id }}</code></td>
+                                            <td><strong class="text-primary">{{ sch.departure_time }}</strong></td>
+                                            <td>{{ sch.arrival_time }}</td>
+                                            <td>Every {{ sch.frequency_mins }} mins</td>
+                                            <td>{{ sch.day_of_week }}</td>
+                                            <td><span class="badge bg-success-subtle text-success">Active</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endwith %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

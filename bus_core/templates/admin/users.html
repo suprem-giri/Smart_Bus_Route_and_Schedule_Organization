@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage User Accounts - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-people-fill text-info me-2"></i>User Accounts & Access Roles</h3>
+            <p class="text-muted mb-0">Administer system users, permission levels, and role assignments in MongoDB.</p>
+        </div>
+        <span class="badge bg-secondary px-3 py-2 fs-6 rounded-pill">
+            {{ users|length }} Registered Accounts
+        </span>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card card-modern p-4">
+        <div class="table-responsive">
+            <table class="table table-hover table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Full Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Access Role</th>
+                        <th>Created At</th>
+                        <th>Modify Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td><code>{{ u.user_id }}</code></td>
+                        <td><strong>{{ u.username }}</strong></td>
+                        <td>{{ u.full_name }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.phone|default:'-' }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if u.role == 'admin' %}bg-danger
+                                {% elif u.role == 'manager' %}bg-warning text-dark
+                                {% elif u.role == 'driver' %}bg-info text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ u.role|title }}
+                            </span>
+                        </td>
+                        <td><small class="text-muted">{{ u.created_at|slice:":10" }}</small></td>
+                        <td>
+                            <form method="POST" action="{% url 'admin_users' %}" class="d-flex align-items-center gap-1">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_role">
+                                <input type="hidden" name="user_id" value="{{ u.user_id }}">
+                                <select name="role" class="form-select form-select-sm" style="width: auto;">
+                                    <option value="passenger" {% if u.role == 'passenger' %}selected{% endif %}>Passenger</option>
+                                    <option value="driver" {% if u.role == 'driver' %}selected{% endif %}>Driver</option>
+                                    <option value="manager" {% if u.role == 'manager' %}selected{% endif %}>Manager</option>
+                                    <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-primary py-0 px-2" title="Save role">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">No users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

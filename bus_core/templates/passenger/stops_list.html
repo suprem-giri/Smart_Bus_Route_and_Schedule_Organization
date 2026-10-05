@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Bus Stops Directory - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-geo-alt-fill text-primary me-2"></i>Bus Stops Directory</h3>
+            <p class="text-muted mb-0">Explore physical bus stops, GPS coordinates, transfer terminals, and station amenities.</p>
+        </div>
+        <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill">
+            {{ stops|length }} Stops Registered
+        </span>
+    </div>
+
+    <!-- Map & Table Grid -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card card-modern p-3">
+                <h5 class="fw-bold mb-3"><i class="bi bi-map me-2 text-primary"></i>Geographic Stop Locations</h5>
+                <div id="stops-map" class="transit-map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table of Stops -->
+    <div class="card card-modern p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-table me-2 text-secondary"></i>Transit Stop Directory</h5>
+        <div class="table-responsive">
+            <table class="table table-hover table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th>Stop ID</th>
+                        <th>Stop Name</th>
+                        <th>Code</th>
+                        <th>Zone</th>
+                        <th>Terminal Hub</th>
+                        <th>Facilities</th>
+                        <th>Serving Lines</th>
+                        <th>GPS Coordinates</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in stops %}
+                    <tr>
+                        <td><code>{{ s.stop_id }}</code></td>
+                        <td><strong>{{ s.name }}</strong></td>
+                        <td><span class="badge bg-light text-dark border">{{ s.code }}</span></td>
+                        <td>{{ s.zone }}</td>
+                        <td>
+                            {% if s.is_terminal %}
+                                <span class="badge bg-danger">Major Hub</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary">Standard Stop</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for f in s.facilities %}
+                                <span class="badge bg-light text-dark border me-1">{{ f }}</span>
+                            {% empty %}
+                                <span class="text-muted small">None listed</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for r_num in s.serving_routes %}
+                                <span class="badge bg-primary me-1">{{ r_num }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Connecting</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ s.latitude|floatformat:4 }}, {{ s.longitude|floatformat:4 }}</small>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ stops|json_script:"stops-map-data" }}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const map = TransitMap.initMap('stops-map');
+        const stopsData = JSON.parse(document.getElementById('stops-map-data').textContent);
+        TransitMap.renderStops(map, stopsData);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}Transport Operations Dashboard - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-warning me-2"></i>Transport Operations & Analytics</h3>
+            <p class="text-muted mb-0">Monitor passenger demand distributions, fleet readiness, and algorithmic optimization runs.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'manager_demand' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-people me-1"></i>Manage Demand
+            </a>
+            <a href="{% url 'manager_optimize' %}" class="btn btn-warning text-dark fw-semibold">
+                <i class="bi bi-lightning-charge me-1"></i>Run Schedule Optimizer
+            </a>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-diagram-3-fill"></i></div>
+                <div>
+                    <div class="stat-val">{{ total_routes }}</div>
+                    <div class="stat-label">Active Routes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-bus-front-fill"></i></div>
+                <div>
+                    <div class="stat-val">{{ total_buses }}</div>
+                    <div class="stat-label">Fleet Size</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-people-fill"></i></div>
+                <div>
+                    <div class="stat-val">{{ total_demand_passengers }}</div>
+                    <div class="stat-label">Total Passenger Demand</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="bi bi-cpu-fill"></i></div>
+                <div>
+                    <div class="stat-val">{% if latest_opt %}{{ latest_opt.improvements.utilization_gain_pct }}%{% else %}N/A{% endif %}</div>
+                    <div class="stat-label">Fleet Utilization Gain</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts & Optimization Highlights -->
+    <div class="row g-4 mb-4">
+        <!-- Demand Distribution Chart -->
+        <div class="col-lg-8">
+            <div class="card card-modern h-100 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Passenger Demand by Route</h5>
+                    <span class="badge bg-light text-dark border">Peak & Regular Aggregate</span>
+                </div>
+                <div style="height: 320px;">
+                    <canvas id="demandChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest Optimization Run Glance -->
+        <div class="col-lg-4">
+            <div class="card card-modern h-100 p-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-check2-circle text-success me-2"></i>Latest Optimization Run</h5>
+                {% if latest_opt %}
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary small">Scenario:</span>
+                            <span class="fw-semibold small">{{ latest_opt.scenario_name }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-secondary small">Algorithm Speed:</span>
+                            <span class="badge bg-success">{{ latest_opt.execution_time_ms }} ms</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-secondary small">Timestamp:</span>
+                            <span class="small text-muted">{{ latest_opt.timestamp|slice:":16" }}</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <div class="metric-improvement-card">
+                                <div class="improvement-val fs-3">{{ latest_opt.improvements.waiting_time_reduction_pct }}%</div>
+                                <small class="text-muted">Wait Time Change</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-improvement-card">
+                                <div class="improvement-val fs-3 text-primary">+{{ latest_opt.improvements.utilization_gain_pct }}%</div>
+                                <small class="text-muted">Seat Utilization</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="{% url 'manager_reports' %}?opt_id={{ latest_opt.optimization_id }}" class="btn btn-outline-primary w-100 btn-sm">
+                        <i class="bi bi-file-earmark-bar-graph me-1"></i>View Full Report
+                    </a>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-lightning-charge display-6 text-warning mb-2"></i>
+                        <p class="mb-3">No optimization run recorded yet.</p>
+                        <a href="{% url 'manager_optimize' %}" class="btn btn-warning btn-sm">Run First Optimization</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Optimization Runs Table -->
+    <div class="card card-modern p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-secondary"></i>Historical Optimization Runs</h5>
+            <a href="{% url 'manager_reports' %}" class="btn btn-sm btn-light border">All Reports</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-modern mb-0">
+                <thead>
+                    <tr>
+                        <th>Run ID</th>
+                        <th>Scenario Name</th>
+                        <th>Period Filter</th>
+                        <th>Baseline Wait Time</th>
+                        <th>Optimized Wait Time</th>
+                        <th>Utilization Gain</th>
+                        <th>Exec Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for opt in recent_opts %}
+                    <tr>
+                        <td><code>{{ opt.optimization_id }}</code></td>
+                        <td><strong>{{ opt.scenario_name }}</strong></td>
+                        <td><span class="badge bg-light text-dark border">{{ opt.parameters.time_period }}</span></td>
+                        <td>{{ opt.metrics_baseline.avg_waiting_time_mins }} min</td>
+                        <td><strong class="text-success">{{ opt.metrics_optimized.avg_waiting_time_mins }} min</strong></td>
+                        <td><span class="badge bg-success-subtle text-success">+{{ opt.improvements.utilization_gain_pct }}%</span></td>
+                        <td><small class="text-muted">{{ opt.execution_time_ms }} ms</small></td>
+                        <td>
+                            <a href="{% url 'manager_reports' %}?opt_id={{ opt.optimization_id }}" class="btn btn-sm btn-outline-primary py-0">
+                                Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-3 text-muted">No runs recorded.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const labels = {{ chart_labels_json|safe }};
+        const data = {{ chart_data_json|safe }};
+        TransitCharts.renderDemandChart('demandChart', labels, data);
+    });
+</script>
+{% endblock %}

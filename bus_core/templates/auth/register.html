@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Account - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card card-modern p-4 p-md-5 border-0 shadow-lg">
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold mb-1">Create Transit Account</h3>
+                    <p class="text-muted small">Register to plan routes, manage transit assets, or update trip status</p>
+                </div>
+
+                <form method="POST" action="{% url 'register' %}">
+                    {% csrf_token %}
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Full Name</label>
+                            <input type="text" name="full_name" class="form-control" placeholder="e.g. Sujan Sharma" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Username</label>
+                            <input type="text" name="username" class="form-control" placeholder="e.g. sujansharma" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Email Address</label>
+                            <input type="email" name="email" class="form-control" placeholder="name@domain.com" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Phone Number</label>
+                            <input type="text" name="phone" class="form-control" placeholder="+977-98XXXXXXXX">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-secondary">Account Type / Role</label>
+                        <select name="role" class="form-select">
+                            <option value="passenger" selected>Passenger (Search Routes & Schedules)</option>
+                            <option value="driver">Driver (Log Bus Trips & Live Status)</option>
+                            <option value="manager">Transport Operations Manager</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Password</label>
+                            <input type="password" name="password" class="form-control" placeholder="Min 6 characters" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-secondary">Confirm Password</label>
+                            <input type="password" name="confirm_password" class="form-control" placeholder="Repeat password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mb-3">
+                        Register Account
+                    </button>
+                </form>
+
+                <div class="text-center">
+                    <small class="text-muted">Already registered? <a href="{% url 'login' %}" class="fw-semibold text-primary">Sign in here</a></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

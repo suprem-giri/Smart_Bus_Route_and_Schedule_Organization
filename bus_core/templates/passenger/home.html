@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}Smart Public Bus Route & Schedule Optimization System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-banner">
+    <div class="container-fluid px-lg-5">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <span class="badge bg-primary px-3 py-2 rounded-pill mb-3 text-uppercase fw-semibold" style="letter-spacing: 1px;">
+                    <i class="bi bi-cpu me-1"></i>Algorithm-Driven Urban Mobility
+                </span>
+                <h1 class="display-5 fw-bold mb-3">Smart Public Bus Route & Schedule Optimization</h1>
+                <p class="lead text-light mb-4" style="max-width: 600px;">
+                    Find optimal travel paths across Kathmandu's bus transit network using Dijkstra's algorithm.
+                    Empowering transport managers with passenger-demand scheduling and fleet allocation heuristics.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{% url 'route_search' %}" class="btn btn-primary btn-lg px-4 shadow">
+                        <i class="bi bi-signpost-split me-2"></i>Find Shortest Route
+                    </a>
+                    <a href="{% url 'routes_list' %}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-diagram-3 me-2"></i>View All Routes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Trip Planner Card -->
+            <div class="col-lg-5">
+                <div class="card card-modern border-0 shadow-lg text-dark p-4">
+                    <h5 class="fw-bold mb-3 text-primary d-flex align-items-center">
+                        <i class="bi bi-compass me-2"></i>Quick Route Search
+                    </h5>
+                    <form action="{% url 'route_search' %}" method="GET">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Departure Bus Stop</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-primary"><i class="bi bi-geo-alt"></i></span>
+                                <select name="source" class="form-select" required>
+                                    <option value="">Select origin stop...</option>
+                                    {% for s in stops %}
+                                        <option value="{{ s.stop_id }}">{{ s.name }} ({{ s.code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Destination Bus Stop</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-danger"><i class="bi bi-pin-map"></i></span>
+                                <select name="destination" class="form-select" required>
+                                    <option value="">Select destination stop...</option>
+                                    {% for s in stops %}
+                                        <option value="{{ s.stop_id }}">{{ s.name }} ({{ s.code }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-secondary">Optimization Priority</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metric" id="optDist" value="distance" checked>
+                                    <label class="form-check-label small" for="optDist">Shortest Distance</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="metric" id="optTime" value="time">
+                                    <label class="form-check-label small" for="optTime">Fastest Travel Time</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                            <i class="bi bi-search me-2"></i>Calculate Optimal Path
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Statistics Bar -->
+<div class="container-fluid px-lg-5 mb-5">
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-geo-alt-fill"></i></div>
+                <div>
+                    <div class="stat-val">{{ total_stops }}</div>
+                    <div class="stat-label">Bus Stops Connected</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-bezier2"></i></div>
+                <div>
+                    <div class="stat-val">{{ total_routes }}</div>
+                    <div class="stat-label">Active Transit Lines</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-bus-front"></i></div>
+                <div>
+                    <div class="stat-val">{{ total_buses }}</div>
+                    <div class="stat-label">Buses in Fleet</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="bi bi-graph-up-arrow"></i></div>
+                <div>
+                    <div class="stat-val">O((V+E)logV)</div>
+                    <div class="stat-label">Dijkstra Min-Heap Speed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Network Map Section -->
+<div class="container-fluid px-lg-5 mb-5">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card card-modern h-100">
+                <div class="card-header-clean">
+                    <div>
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-map text-primary me-2"></i>Interactive Transit Network Map</h5>
+                        <small class="text-muted">Explore urban bus stops and major mobility hubs powered by Leaflet & OpenStreetMap</small>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                        Live Network
+                    </span>
+                </div>
+                <div class="p-3">
+                    <div id="network-map" class="transit-map"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-header-clean">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-stars text-warning me-2"></i>System Capabilities</h5>
+                </div>
+                <div class="p-3">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-bus-front-fill text-success me-2"></i>Live Buses</h6>
+                            <span id="live-bus-count" class="badge bg-secondary">0</span>
+                        </div>
+                        <p id="live-bus-status" class="small text-muted mb-2" aria-live="polite">Checking for buses sharing GPS...</p>
+                        <div id="live-bus-list" class="list-group list-group-flush small"></div>
+                        <small class="text-muted">Arrival times are estimates, not traffic-aware.</small>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item px-0 py-3 border-bottom">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-signpost-2 text-primary me-2"></i>Dijkstra Shortest Path</h6>
+                            <p class="small text-muted mb-0">Computes the lowest-cost journey between stops considering physical distance and estimated traffic duration.</p>
+                        </div>
+                        <div class="list-group-item px-0 py-3 border-bottom">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-clock-history text-success me-2"></i>Demand-Based Frequency</h6>
+                            <p class="small text-muted mb-0">Estimates required trips and headway frequency using passenger counts per time period.</p>
+                        </div>
+                        <div class="list-group-item px-0 py-3 border-bottom">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-shuffle text-warning me-2"></i>Greedy Bus Allocation</h6>
+                            <p class="small text-muted mb-0">Assigns available bus capacities to routes sorted by demand priority to minimize unmet travel demand.</p>
+                        </div>
+                        <div class="list-group-item px-0 py-3">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-database-check text-info me-2"></i>MongoDB Document Model</h6>
+                            <p class="small text-muted mb-0">Flexible document schema storing stops, geo-coordinates, demand records, and historical optimization runs.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Featured Routes List -->
+<div class="container-fluid px-lg-5 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-1">Key Transit Routes</h4>
+            <p class="text-muted mb-0">Major corridors connecting city terminals and residential districts</p>
+        </div>
+        <a href="{% url 'routes_list' %}" class="btn btn-outline-primary btn-sm px-3">
+            View All Routes <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+    </div>
+
+    <div class="row g-3">
+        {% for r in routes %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100 p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary fs-6">{{ r.route_number }}</span>
+                    <span class="badge bg-light text-dark border">{{ r.total_distance_km }} km</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-2">{{ r.route_name }}</h6>
+                <p class="small text-muted mb-3">
+                    <i class="bi bi-stoplights me-1"></i>{{ r.stops|length }} Bus Stops &bull; 
+                    <i class="bi bi-clock me-1"></i>~{{ r.estimated_duration_mins }} mins
+                </p>
+                <div class="mt-auto d-flex justify-content-between align-items-center pt-2 border-top">
+                    <span class="fw-bold text-success">Rs. {{ r.base_fare|floatformat:0 }}</span>
+                    <a href="{% url 'routes_list' %}#route-{{ r.route_id }}" class="btn btn-sm btn-light border">
+                        Details <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ stops|json_script:"network-stops-data" }}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const map = TransitMap.initMap('network-map');
+        const stopsData = JSON.parse(document.getElementById('network-stops-data').textContent);
+        TransitMap.renderStops(map, stopsData);
+        const liveBusLayer = TransitMap.createLiveBusLayer(map);
+        const liveBusStatus = document.getElementById('live-bus-status');
+        const liveBusCount = document.getElementById('live-bus-count');
+        const liveBusList = document.getElementById('live-bus-list');
+
+        async function refreshLiveBuses() {
+            try {
+                const response = await fetch("{% url 'api_live_buses' %}", { headers: { "Accept": "application/json" } });
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                const data = await response.json();
+                liveBusLayer.update(data.results);
+                liveBusCount.textContent = data.count;
+                liveBusList.replaceChildren();
+
+                if (data.count === 0) {
+                    liveBusStatus.textContent = "No buses are currently sharing their location.";
+                    return;
+                }
+                liveBusStatus.textContent = "Bus locations refresh automatically.";
+                data.results.forEach(bus => {
+                    const nextStop = bus.stop_arrivals && bus.stop_arrivals[0];
+                    const item = document.createElement("div");
+                    item.className = "list-group-item px-0 py-2";
+                    const title = document.createElement("strong");
+                    title.textContent = `${bus.bus_number} · ${bus.route_number}`;
+                    const detail = document.createElement("div");
+                    detail.className = "text-muted";
+                    detail.textContent = nextStop
+                        ? `Next: ${nextStop.name} · about ${nextStop.eta_minutes} min`
+                        : "Location available; no upcoming stop estimate.";
+                    item.append(title, detail);
+                    liveBusList.append(item);
+                });
+            } catch (error) {
+                liveBusLayer.update([]);
+                liveBusCount.textContent = "0";
+                liveBusList.replaceChildren();
+                liveBusStatus.textContent = "Unable to load live buses. Please try again shortly.";
+                console.error("Could not refresh live bus locations:", error);
+            }
+        }
+
+        refreshLiveBuses();
+        window.setInterval(refreshLiveBuses, 15000);
+    });
+</script>
+{% endblock %}

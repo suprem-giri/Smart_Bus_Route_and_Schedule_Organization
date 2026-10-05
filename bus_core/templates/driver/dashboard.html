@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+
+{% block title %}Driver Portal & Duty Roster - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-person-badge text-info me-2"></i>Driver Operational Portal</h3>
+            <p class="text-muted mb-0">Manage trip progress and share your bus GPS with passengers. GPS requires location permission and HTTPS (or localhost).</p>
+        </div>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#startTripModal">
+            <i class="bi bi-play-circle me-1"></i>Start New Trip Run
+        </button>
+    </div>
+
+    <!-- Assigned Bus & Duty Details -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-person-check text-success me-2"></i>Driver Profile</h5>
+                {% if driver %}
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="stat-icon green me-3"><i class="bi bi-person"></i></div>
+                        <div>
+                            <h5 class="fw-bold mb-0">{{ driver.name }}</h5>
+                            <small class="text-muted">License: <code>{{ driver.license_number }}</code></small>
+                        </div>
+                    </div>
+                    <ul class="list-unstyled small mb-0">
+                        <li class="mb-1"><strong>Phone:</strong> {{ driver.phone }}</li>
+                        <li class="mb-1"><strong>Experience:</strong> {{ driver.experience_years }} years</li>
+                        <li><strong>Duty Status:</strong> <span class="badge bg-success">{{ driver.status }}</span></li>
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No driver profile linked to current account.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-8">
+            <div class="card card-modern p-4 h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-bus-front text-primary me-2"></i>Assigned Transit Vehicle</h5>
+                {% if assigned_bus %}
+                    <div class="row g-3">
+                        <div class="col-sm-6 col-lg-3">
+                            <span class="text-secondary small">Vehicle Plate</span>
+                            <div class="fw-bold fs-5 text-dark">{{ assigned_bus.bus_number }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <span class="text-secondary small">Model / Make</span>
+                            <div class="fw-bold">{{ assigned_bus.model }}</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <span class="text-secondary small">Rated Seating Capacity</span>
+                            <div class="fw-bold text-primary fs-5">{{ assigned_bus.capacity }} seats</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <span class="text-secondary small">Fleet Status</span>
+                            <div>
+                                <span class="badge badge-pill-soft badge-available fs-6">{{ assigned_bus.status }}</span>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>You are currently assigned to reserve / standby fleet.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Trips List & Real-Time Status Updater -->
+    <div class="card card-modern p-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-secondary"></i>Assigned Trips & Real-Time Status Log</h5>
+        {% if can_track_location %}
+        <p id="gps-tracking-status" class="small text-muted" aria-live="polite">Location sharing is off.</p>
+        {% endif %}
+        <div class="table-responsive">
+            <table class="table table-hover table-modern align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Trip ID</th>
+                        <th>Route</th>
+                        <th>Date</th>
+                        <th>Scheduled Departure</th>
+                        <th>Actual Departure</th>
+                        <th>Current Location</th>
+                        <th>Delay</th>
+                        <th>Current Status</th>
+                        {% if can_track_location %}<th>Live GPS</th>{% endif %}
+                        <th>Update Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in trips %}
+                    <tr>
+                        <td><code>{{ t.trip_id }}</code></td>
+                        <td><span class="badge bg-primary me-1">{{ t.route_id }}</span></td>
+                        <td>{{ t.date }}</td>
+                        <td><strong>{{ t.scheduled_departure }}</strong></td>
+                        <td>{{ t.actual_departure|default:'-' }}</td>
+                        <td>{{ t.current_stop_id|default:'Terminal' }}</td>
+                        <td>
+                            {% if t.delay_minutes > 0 %}
+                                <span class="badge bg-danger-subtle text-danger">+{{ t.delay_minutes }} min</span>
+                            {% else %}
+                                <span class="badge bg-success-subtle text-success">On Time</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if t.status == 'Scheduled' %}
+                                <span class="badge badge-pill-soft badge-service">Scheduled</span>
+                            {% elif t.status == 'In Transit' or t.status == 'Departed' %}
+                                <span class="badge badge-pill-soft badge-intransit">In Transit</span>
+                            {% elif t.status == 'Completed' %}
+                                <span class="badge badge-pill-soft badge-available">Completed</span>
+                            {% elif t.status == 'Delayed' %}
+                                <span class="badge badge-pill-soft badge-maintenance">Delayed</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ t.status }}</span>
+                            {% endif %}
+                        </td>
+                        {% if can_track_location %}
+                        <td>
+                            {% if t.status == 'In Transit' or t.status == 'Departed' or t.status == 'Delayed' %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-success gps-tracking-toggle"
+                                    data-trip-id="{{ t.trip_id }}"
+                                    data-location-url="{% url 'api_trip_location' t.trip_id %}">
+                                <i class="bi bi-geo-alt me-1"></i>Share GPS
+                            </button>
+                            {% else %}
+                            <span class="text-muted small">Start trip first</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            <!-- Status Update Form Modal Trigger -->
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#updateTripModal-{{ t.trip_id }}">
+                                <i class="bi bi-pencil-square me-1"></i>Update
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Update Trip Modal -->
+                    <div class="modal fade" id="updateTripModal-{{ t.trip_id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title fw-bold">Update Trip <code>{{ t.trip_id }}</code></h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form method="POST" action="{% url 'driver_dashboard' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update_trip_status">
+                                    <input type="hidden" name="trip_id" value="{{ t.trip_id }}">
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Trip Status</label>
+                                            <select name="status" class="form-select">
+                                                <option value="Scheduled" {% if t.status == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                                                <option value="Departed" {% if t.status == 'Departed' %}selected{% endif %}>Departed</option>
+                                                <option value="In Transit" {% if t.status == 'In Transit' %}selected{% endif %}>In Transit</option>
+                                                <option value="Delayed" {% if t.status == 'Delayed' %}selected{% endif %}>Delayed</option>
+                                                <option value="Completed" {% if t.status == 'Completed' %}selected{% endif %}>Completed</option>
+                                                <option value="Cancelled" {% if t.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Current Bus Stop Location</label>
+                                            <select name="current_stop_id" class="form-select">
+                                                {% for s in stops %}
+                                                    <option value="{{ s.stop_id }}" {% if s.stop_id == t.current_stop_id %}selected{% endif %}>
+                                                        {{ s.name }} ({{ s.stop_id }})
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Delay (Minutes)</label>
+                                            <input type="number" name="delay_minutes" class="form-control" value="{{ t.delay_minutes|default:0 }}" min="0">
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-semibold">Driver Notes / Traffic Observations</label>
+                                            <textarea name="notes" class="form-control" rows="2">{{ t.notes }}</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save Status Update</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if can_track_location %}10{% else %}9{% endif %}" class="text-center py-4 text-muted">
+                            No active trips assigned for today. Click "Start New Trip Run" to initiate one.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Start New Trip Modal -->
+<div class="modal fade" id="startTripModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Initiate Trip Run</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'driver_dashboard' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_trip">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Select Route</label>
+                        <select name="route_id" class="form-select" required>
+                            {% for r in routes %}
+                                <option value="{{ r.route_id }}">{{ r.route_number }} - {{ r.route_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Starting Bus Stop</label>
+                        <select name="start_stop_id" class="form-select" required>
+                            {% for s in stops %}
+                                <option value="{{ s.stop_id }}">{{ s.name }} ({{ s.stop_id }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start Trip Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% if can_track_location %}
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const statusMessage = document.getElementById("gps-tracking-status");
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+        let currentTracking = null;
+
+        function setStatus(message, isError = false) {
+            statusMessage.textContent = message;
+            statusMessage.classList.toggle("text-danger", isError);
+            statusMessage.classList.toggle("text-muted", !isError);
+        }
+
+        function stopCurrentTracking(clearOnServer = true) {
+            if (!currentTracking) return;
+            const stopped = currentTracking;
+            navigator.geolocation.clearWatch(stopped.watchId);
+            stopped.button.innerHTML = '<i class="bi bi-geo-alt me-1"></i>Share GPS';
+            stopped.button.classList.remove("btn-danger");
+            stopped.button.classList.add("btn-outline-success");
+            currentTracking = null;
+
+            if (clearOnServer) {
+                fetch(stopped.locationUrl, {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": csrfToken, "Accept": "application/json" }
+                }).then(response => {
+                    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                    setStatus("Location sharing stopped.");
+                }).catch(error => {
+                    setStatus("GPS stopped on this device, but the saved location could not be cleared.", true);
+                    console.error("Could not clear bus location:", error);
+                });
+            }
+        }
+
+        document.querySelectorAll(".gps-tracking-toggle").forEach(button => {
+            button.addEventListener("click", function() {
+                if (currentTracking?.button === button) {
+                    stopCurrentTracking();
+                    return;
+                }
+                if (!navigator.geolocation) {
+                    setStatus("This device or browser does not support GPS location.", true);
+                    return;
+                }
+                stopCurrentTracking();
+
+                const tracking = {
+                    button,
+                    locationUrl: button.dataset.locationUrl,
+                    lastSentAt: 0,
+                    watchId: null
+                };
+                currentTracking = tracking;
+                button.innerHTML = '<i class="bi bi-broadcast me-1"></i>Stop GPS';
+                button.classList.remove("btn-outline-success");
+                button.classList.add("btn-danger");
+                setStatus("Waiting for GPS permission and a location fix...");
+
+                tracking.watchId = navigator.geolocation.watchPosition(async position => {
+                    if (Date.now() - tracking.lastSentAt < 10000) return;
+                    tracking.lastSentAt = Date.now();
+                    try {
+                        const response = await fetch(tracking.locationUrl, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfToken,
+                                "Accept": "application/json"
+                            },
+                            body: JSON.stringify({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                accuracy: position.coords.accuracy,
+                                speed: position.coords.speed
+                            })
+                        });
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.error || `Server returned ${response.status}`);
+                        setStatus("Sharing live GPS. Passenger maps refresh every 15 seconds.");
+                    } catch (error) {
+                        setStatus(`Could not share bus location: ${error.message}`, true);
+                        console.error("Could not update bus location:", error);
+                    }
+                }, error => {
+                    setStatus(`GPS error: ${error.message}`, true);
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 5000,
+                    timeout: 20000
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Optimization Reports & Analytical Evaluation - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Comparative Optimization Evaluation Reports</h3>
+            <p class="text-muted mb-0">Quantitative analysis of baseline static timetables versus demand-optimized schedules.</p>
+        </div>
+        <div>
+            <!-- Dropdown to select different run -->
+            <form method="GET" action="{% url 'manager_reports' %}" class="d-flex align-items-center gap-2">
+                <label class="small text-muted fw-semibold">Select Run:</label>
+                <select name="opt_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for opt in all_opts %}
+                        <option value="{{ opt.optimization_id }}" {% if opt.optimization_id == result.optimization_id %}selected{% endif %}>
+                            {{ opt.scenario_name }} ({{ opt.optimization_id }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    {% if result %}
+        <!-- Quantitative Improvement Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-4">
+                <div class="card card-modern p-4 text-center">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle mx-auto px-3 py-1 mb-2 rounded-pill">
+                        Waiting Time
+                    </span>
+                    <div class="display-6 fw-bold text-success mb-1">
+                        {{ result.improvements.waiting_time_reduction_pct }}%
+                    </div>
+                    <small class="text-muted">Average Passenger Waiting Time Reduction</small>
+                    <hr class="my-2">
+                    <small class="text-secondary">Baseline: {{ result.metrics_baseline.avg_waiting_time_mins }}m &rarr; Optimized: {{ result.metrics_optimized.avg_waiting_time_mins }}m</small>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-lg-4">
+                <div class="card card-modern p-4 text-center">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle mx-auto px-3 py-1 mb-2 rounded-pill">
+                        Fleet Utilization
+                    </span>
+                    <div class="display-6 fw-bold text-primary mb-1">
+                        +{{ result.improvements.utilization_gain_pct }}%
+                    </div>
+                    <small class="text-muted">Average Seat Occupancy / Utilization Gain</small>
+                    <hr class="my-2">
+                    <small class="text-secondary">Baseline: {{ result.metrics_baseline.avg_bus_utilization_pct }}% &rarr; Optimized: {{ result.metrics_optimized.avg_bus_utilization_pct }}%</small>
+                </div>
+            </div>
+
+            <div class="col-sm-6 col-lg-4">
+                <div class="card card-modern p-4 text-center">
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle mx-auto px-3 py-1 mb-2 rounded-pill">
+                        Algorithm Execution
+                    </span>
+                    <div class="display-6 fw-bold text-dark mb-1">
+                        {{ result.execution_time_ms }} <small class="fs-6 text-muted">ms</small>
+                    </div>
+                    <small class="text-muted">Total Heuristic Computational Latency</small>
+                    <hr class="my-2">
+                    <small class="text-secondary">Routes: {{ result.parameters.total_routes }} | Fleet Pool: {{ result.parameters.total_buses_pool }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparative Charts -->
+        <div class="row g-4 mb-4">
+            <!-- Chart 1: Waiting Time -->
+            <div class="col-lg-6">
+                <div class="card card-modern p-4 h-100">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-clock-history text-danger me-2"></i>Waiting Time Comparison (mins)</h5>
+                    <p class="small text-muted mb-2">Lower waiting time indicates higher transit service quality and responsiveness.</p>
+                    <div style="height: 320px;">
+                        <canvas id="waitingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart 2: Fleet Utilization -->
+            <div class="col-lg-6">
+                <div class="card card-modern p-4 h-100">
+                    <h5 class="fw-bold mb-3"><i class="bi bi-pie-chart text-success me-2"></i>Bus Fleet Utilization Comparison (%)</h5>
+                    <p class="small text-muted mb-2">Higher utilization indicates reduced empty seat miles and better capacity matching.</p>
+                    <div style="height: 320px;">
+                        <canvas id="utilizationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Evaluation Metrics Table -->
+        <div class="card card-modern p-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-table text-primary me-2"></i>Detailed Evaluation Matrix (Section 4.3.6)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Passenger Demand</th>
+                            <th>Baseline Service Interval</th>
+                            <th>Optimized Service Interval</th>
+                            <th>Baseline Waiting</th>
+                            <th>Optimized Waiting</th>
+                            <th>Baseline Utilization</th>
+                            <th>Optimized Utilization</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rc in result.route_comparison %}
+                        <tr>
+                            <td><strong>{{ rc.route_name }}</strong></td>
+                            <td><span class="badge bg-secondary">{{ rc.demand }}</span></td>
+                            <td>Uniform</td>
+                            <td><strong class="text-primary">{{ rc.optimized_service_interval_mins }} min</strong></td>
+                            <td>{{ rc.baseline_waiting_mins }} min</td>
+                            <td><strong class="text-success">{{ rc.optimized_waiting_mins }} min</strong></td>
+                            <td>{{ rc.baseline_utilization_pct }}%</td>
+                            <td><strong class="text-success">{{ rc.optimized_utilization_pct }}%</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card card-modern p-5 text-center">
+            <i class="bi bi-bar-chart-line display-4 text-muted mb-3"></i>
+            <h4 class="fw-bold">No Optimization Runs Found</h4>
+            <p class="text-muted">Please execute an optimization run from the optimizer control center to view comparative reports.</p>
+            <a href="{% url 'manager_optimize' %}" class="btn btn-warning mt-2">Go to Schedule Optimizer</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if result %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const labels = {{ chart_labels_json|safe }};
+        const baselineWaits = {{ chart_baseline_waits_json|safe }};
+        const optWaits = {{ chart_opt_waits_json|safe }};
+        const baselineUtils = {{ chart_baseline_utils_json|safe }};
+        const optUtils = {{ chart_opt_utils_json|safe }};
+
+        TransitCharts.renderComparisonChart('waitingChart', labels, baselineWaits, optWaits, 'Average Waiting Time', 'min');
+        TransitCharts.renderComparisonChart('utilizationChart', labels, baselineUtils, optUtils, 'Fleet Utilization', '%');
+    });
+</script>
+{% endif %}
+{% endblock %}

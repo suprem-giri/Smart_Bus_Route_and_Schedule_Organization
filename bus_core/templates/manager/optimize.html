@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Schedule Optimizer - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Schedule & Fleet Optimizer</h3>
+            <p class="text-muted mb-0">Execute demand-based frequency calculation and greedy bus allocation against active transit routes.</p>
+        </div>
+        <a href="{% url 'manager_reports' %}" class="btn btn-outline-primary">
+            <i class="bi bi-bar-chart-line me-1"></i>Comparative Reports
+        </a>
+    </div>
+
+    <!-- Optimization Parameter Controls -->
+    <div class="card card-modern p-4 mb-4">
+        <h5 class="fw-bold mb-3"><i class="bi bi-sliders me-2 text-primary"></i>Optimization Parameters</h5>
+        <form method="POST" action="{% url 'manager_optimize' %}">
+            {% csrf_token %}
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-secondary">Operational Time Window</label>
+                    <select name="time_period" class="form-select">
+                        <option value="08:00-09:00" {% if time_period == '08:00-09:00' %}selected{% endif %}>08:00 - 09:00 (Morning Peak Demand)</option>
+                        <option value="12:00-13:00" {% if time_period == '12:00-13:00' %}selected{% endif %}>12:00 - 13:00 (Mid-day Off-Peak)</option>
+                        <option value="17:00-18:00" {% if time_period == '17:00-18:00' %}selected{% endif %}>17:00 - 18:00 (Evening Peak Demand)</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold text-secondary">Scenario Name / Description</label>
+                    <input type="text" name="scenario_name" class="form-control" value="Peak Morning Fleet Allocation Scenario">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-warning text-dark w-100 py-2 fw-bold shadow-sm">
+                        <i class="bi bi-play-circle-fill me-1"></i>Execute Optimization
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if opt_result %}
+        <!-- Summary Improvements Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-graph-up"></i></div>
+                    <div>
+                        <div class="stat-val text-success">{{ opt_result.improvements.waiting_time_reduction_pct }}%</div>
+                        <div class="stat-label">Wait Time Reduction</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="bi bi-pie-chart-fill"></i></div>
+                    <div>
+                        <div class="stat-val text-primary">+{{ opt_result.improvements.utilization_gain_pct }}%</div>
+                        <div class="stat-label">Bus Utilization Gain</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon amber"><i class="bi bi-person-x-fill"></i></div>
+                    <div>
+                        <div class="stat-val">{{ opt_result.metrics_optimized.total_unmet }}</div>
+                        <div class="stat-label">Unmet Passengers (Greedy)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="bi bi-stopwatch"></i></div>
+                    <div>
+                        <div class="stat-val">{{ opt_result.execution_time_ms }} <small class="fs-6 text-muted">ms</small></div>
+                        <div class="stat-label">Algorithm Run Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Before vs After Comparison Table -->
+        <div class="card card-modern p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-arrow-left-right text-primary me-2"></i>Baseline vs. Optimized Schedule Comparison</h5>
+                <span class="badge bg-light text-dark border">
+                    Run ID: <code>{{ opt_result.optimization_id }}</code>
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-modern align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Route</th>
+                            <th>Passenger Demand</th>
+                            <th>Baseline Buses</th>
+                            <th>Optimized Buses</th>
+                            <th>Baseline Wait</th>
+                            <th>Optimized Wait</th>
+                            <th>Baseline Util.</th>
+                            <th>Optimized Util.</th>
+                            <th>Service Headway</th>
+                            <th>Assigned Fleet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rc in opt_result.route_comparison %}
+                        <tr>
+                            <td>
+                                <strong>{{ rc.route_name }}</strong><br>
+                                <small class="text-muted"><code>{{ rc.route_id }}</code></small>
+                            </td>
+                            <td><span class="badge bg-secondary fs-6">{{ rc.demand }}</span></td>
+                            <td>{{ rc.baseline_buses }} buses</td>
+                            <td><strong class="text-primary fs-6">{{ rc.optimized_buses }} buses</strong></td>
+                            <td><span class="text-muted">{{ rc.baseline_waiting_mins }} min</span></td>
+                            <td><strong class="text-success">{{ rc.optimized_waiting_mins }} min</strong></td>
+                            <td>{{ rc.baseline_utilization_pct }}%</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 6px;">
+                                        <div class="progress-bar bg-success" style="width: {{ rc.optimized_utilization_pct }}%;"></div>
+                                    </div>
+                                    <span class="small fw-semibold">{{ rc.optimized_utilization_pct }}%</span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if rc.optimized_service_interval_mins %}
+                                    <span class="badge bg-light text-dark border">Every {{ rc.optimized_service_interval_mins }} min</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger">No Service</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% for b in rc.buses_assigned %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">{{ b }}</span>
+                                {% empty %}
+                                    <span class="text-muted small">None</span>
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Unmet Demand Warnings -->
+        {% if opt_result.unmet_summary %}
+            <div class="card card-modern border-warning p-4 bg-warning-subtle">
+                <h5 class="fw-bold text-dark mb-2"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Unmet Demand Capacity Advisory</h5>
+                <p class="small text-muted mb-3">The available bus pool was insufficient to satisfy 100% of peak passenger demand on the following routes:</p>
+                <div class="row g-2">
+                    {% for r_id, info in opt_result.unmet_summary.items %}
+                    <div class="col-md-6">
+                        <div class="p-3 bg-white rounded border">
+                            <strong class="text-dark">{{ info.route_name }} ({{ r_id }})</strong><br>
+                            <span class="text-danger fw-semibold">{{ info.unmet_passengers }} unsatisfied passengers</span><br>
+                            <small class="text-muted">Recommended procurement: +{{ info.additional_buses_needed }} additional bus(es)</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

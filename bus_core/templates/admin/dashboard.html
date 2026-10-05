@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Master Control - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-shield-lock-fill text-danger me-2"></i>Administration & System Control</h3>
+            <p class="text-muted mb-0">Master database management for buses, drivers, routes, stops, and user permissions.</p>
+        </div>
+        <span class="badge bg-danger fs-6 px-3 py-2 rounded-pill">
+            System Admin Mode
+        </span>
+    </div>
+
+    <!-- Quick Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-2">
+            <a href="{% url 'admin_buses' %}" class="text-decoration-none">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="bi bi-bus-front"></i></div>
+                    <div>
+                        <div class="stat-val">{{ total_buses }}</div>
+                        <div class="stat-label">Buses</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+            <a href="{% url 'admin_drivers' %}" class="text-decoration-none">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-person-badge"></i></div>
+                    <div>
+                        <div class="stat-val">{{ total_drivers }}</div>
+                        <div class="stat-label">Drivers</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+            <a href="{% url 'admin_stops' %}" class="text-decoration-none">
+                <div class="stat-card">
+                    <div class="stat-icon amber"><i class="bi bi-geo-alt"></i></div>
+                    <div>
+                        <div class="stat-val">{{ total_stops }}</div>
+                        <div class="stat-label">Bus Stops</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+            <a href="{% url 'admin_routes' %}" class="text-decoration-none">
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="bi bi-bezier2"></i></div>
+                    <div>
+                        <div class="stat-val">{{ total_routes }}</div>
+                        <div class="stat-label">Routes</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+            <a href="{% url 'admin_users' %}" class="text-decoration-none">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="bi bi-people"></i></div>
+                    <div>
+                        <div class="stat-val">{{ total_users }}</div>
+                        <div class="stat-label">Users</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+                <div>
+                    <div class="stat-val">{{ available_buses }}</div>
+                    <div class="stat-label">Fleet Ready</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Modules Grid -->
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="stat-icon blue me-3"><i class="bi bi-bus-front-fill"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Bus Fleet Management</h5>
+                        <small class="text-muted">{{ total_buses }} vehicles registered</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-4">Add new buses, configure passenger capacities, update maintenance status, and assign primary drivers.</p>
+                <a href="{% url 'admin_buses' %}" class="btn btn-outline-primary btn-sm mt-auto">
+                    Manage Buses <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="stat-icon green me-3"><i class="bi bi-person-lines-fill"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Drivers Directory</h5>
+                        <small class="text-muted">{{ total_drivers }} active personnel</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-4">Maintain driver licenses, duty availability, contact information, and bus vehicle allocations.</p>
+                <a href="{% url 'admin_drivers' %}" class="btn btn-outline-success btn-sm mt-auto">
+                    Manage Drivers <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="stat-icon amber me-3"><i class="bi bi-geo-alt-fill"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Bus Stops & Stations</h5>
+                        <small class="text-muted">{{ total_stops }} physical stops</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-4">Create bus stop nodes with precise GPS coordinates, station amenities, and terminal classifications.</p>
+                <a href="{% url 'admin_stops' %}" class="btn btn-outline-warning text-dark btn-sm mt-auto">
+                    Manage Stops <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="stat-icon purple me-3"><i class="bi bi-bezier2"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Transit Routes</h5>
+                        <small class="text-muted">{{ total_routes }} active corridors</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-4">Construct transit routes, define ordered stop sequences, distances, durations, and base fare schedules.</p>
+                <a href="{% url 'admin_routes' %}" class="btn btn-outline-primary btn-sm mt-auto">
+                    Manage Routes <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="stat-icon blue me-3"><i class="bi bi-people-fill"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-0">User Roles & Access</h5>
+                        <small class="text-muted">{{ total_users }} accounts</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-4">Administer system users and role permissions across Admin, Transport Manager, Driver, and Passenger tiers.</p>
+                <a href="{% url 'admin_users' %}" class="btn btn-outline-info text-dark btn-sm mt-auto">
+                    Manage Users <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern p-4 h-100">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="stat-icon green me-3"><i class="bi bi-sliders2"></i></div>
+                    <div>
+                        <h5 class="fw-bold mb-0">Optimization Center</h5>
+                        <small class="text-muted">Algorithms 1, 2, 3 & 4</small>
+                    </div>
+                </div>
+                <p class="small text-muted mb-4">Direct access to the schedule optimization engine, baseline comparators, and performance metrics.</p>
+                <a href="{% url 'manager_optimize' %}" class="btn btn-outline-dark btn-sm mt-auto">
+                    Go to Optimizer <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

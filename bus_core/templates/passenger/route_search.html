@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Optimal Route - Smart Public Bus System{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Header -->
+    <div class="mb-4">
+        <h3 class="fw-bold mb-1"><i class="bi bi-signpost-split text-primary me-2"></i>Dijkstra Shortest Path Route Finder</h3>
+        <p class="text-muted mb-0">Compute the minimum-cost transit path between any two bus stops based on physical distance or travel time.</p>
+    </div>
+
+    <!-- Search Form Card -->
+    <div class="card card-modern p-4 mb-4">
+        <form method="GET" action="{% url 'route_search' %}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold text-secondary small">Origin Bus Stop</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-success"><i class="bi bi-geo-alt-fill"></i></span>
+                        <select name="source" class="form-select" required>
+                            <option value="">Select origin stop...</option>
+                            {% for s in stops %}
+                                <option value="{{ s.stop_id }}" {% if s.stop_id == source_id %}selected{% endif %}>
+                                    {{ s.name }} ({{ s.code }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold text-secondary small">Destination Bus Stop</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-danger"><i class="bi bi-pin-map-fill"></i></span>
+                        <select name="destination" class="form-select" required>
+                            <option value="">Select destination stop...</option>
+                            {% for s in stops %}
+                                <option value="{{ s.stop_id }}" {% if s.stop_id == destination_id %}selected{% endif %}>
+                                    {{ s.name }} ({{ s.code }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold text-secondary small">Optimization Criteria</label>
+                    <select name="metric" class="form-select">
+                        <option value="distance" {% if metric == 'distance' %}selected{% endif %}>Shortest Distance (km)</option>
+                        <option value="time" {% if metric == 'time' %}selected{% endif %}>Fastest Time (mins)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                        <i class="bi bi-search me-1"></i>Find Route
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Optimization Results Display -->
+    {% if result %}
+        {% if result.success %}
+            <!-- Metrics Summary Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-lg-2">
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="bi bi-signpost-2"></i></div>
+                        <div>
+                            <div class="stat-val fs-4">{{ result.total_distance_km }} <small class="fs-6 text-muted">km</small></div>
+                            <div class="stat-label">Total Distance</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <div class="stat-card">
+                        <div class="stat-icon amber"><i class="bi bi-clock-history"></i></div>
+                        <div>
+                            <div class="stat-val fs-4">{{ result.total_travel_time_mins }} <small class="fs-6 text-muted">min</small></div>
+                            <div class="stat-label">Est. Travel Time</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
+                        <div>
+                            <div class="stat-val fs-4">Rs. {{ result.estimated_fare }}</div>
+                            <div class="stat-label">Standard Fare</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <div class="stat-card">
+                        <div class="stat-icon purple"><i class="bi bi-geo-alt"></i></div>
+                        <div>
+                            <div class="stat-val fs-4">{{ result.stops_count }}</div>
+                            <div class="stat-label">Stops on Path</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i class="bi bi-arrow-left-right"></i></div>
+                        <div>
+                            <div class="stat-val fs-4">{{ result.transfers_count }}</div>
+                            <div class="stat-label">Transfers Needed</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-2">
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="bi bi-lightning-charge"></i></div>
+                        <div>
+                            <div class="stat-val fs-4">{{ result.execution_time_ms }} <small class="fs-6 text-muted">ms</small></div>
+                            <div class="stat-label">Dijkstra Exec Time</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Path Visualization & Step Details -->
+            <div class="row g-4">
+                <!-- Map Column -->
+                <div class="col-lg-7">
+                    <div class="card card-modern h-100">
+                        <div class="card-header-clean">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-map-fill text-primary me-2"></i>Optimal Journey Path Map</h5>
+                            <div>
+                                {% for r_num in result.routes_used %}
+                                    <span class="badge bg-primary me-1">{{ r_num }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <div id="route-map" class="transit-map transit-map-lg"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itinerary Column -->
+                <div class="col-lg-5">
+                    <div class="card card-modern h-100">
+                        <div class="card-header-clean">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-list-ol text-success me-2"></i>Turn-by-Turn Transit Itinerary</h5>
+                            <span class="badge bg-light text-dark border">
+                                Optimized by: {{ result.metric_used|title }}
+                            </span>
+                        </div>
+                        <div class="p-3" style="max-height: 580px; overflow-y: auto;">
+                            <div class="route-timeline">
+                                {% for step in result.path_details %}
+                                    <div class="timeline-step {% if forloop.first %}first{% elif forloop.last %}last{% endif %}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="fw-bold mb-1 text-dark">
+                                                    {% if forloop.first %}
+                                                        <span class="badge bg-success me-1">START</span>
+                                                    {% elif forloop.last %}
+                                                        <span class="badge bg-danger me-1">DESTINATION</span>
+                                                    {% endif %}
+                                                    {{ step.name }}
+                                                </h6>
+                                                <div class="small text-muted">
+                                                    <i class="bi bi-pin me-1"></i>Stop Code: <strong>{{ step.stop_id }}</strong>
+                                                    {% if step.zone %} &bull; Zone: {{ step.zone }}{% endif %}
+                                                </div>
+                                                {% if step.route_number %}
+                                                    <div class="mt-1">
+                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                                            <i class="bi bi-bus-front me-1"></i>Board Line: {{ step.route_number }}
+                                                        </span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="fw-semibold small text-primary">{{ step.cumulative_dist_km }} km</span><br>
+                                                <small class="text-muted">{{ step.cumulative_time_mins }} min</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- Error / No Path Found Alert -->
+            <div class="alert alert-warning p-4 card-modern shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill fs-2 text-warning me-3"></i>
+                    <div>
+                        <h5 class="fw-bold mb-1">Route Search Notice</h5>
+                        <p class="mb-0">{{ result.message }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Default State / Instructions -->
+        <div class="card card-modern p-5 text-center bg-white">
+            <i class="bi bi-signpost-2 text-primary display-4 mb-3"></i>
+            <h4 class="fw-bold">Select Origin & Destination Stops</h4>
+            <p class="text-muted" style="max-width: 500px; margin: 0 auto;">
+                Choose any starting and ending bus stops from the dropdown above to view the Dijkstra minimum-cost path, journey duration, estimated fare, and interactive map.
+            </p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if result and result.success %}
+{{ result.path_details|json_script:"route-map-data" }}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const map = TransitMap.initMap('route-map');
+        const pathData = JSON.parse(document.getElementById('route-map-data').textContent);
+        TransitMap.renderPath(map, pathData);
+    });
+</script>
+{% endif %}
+{% endblock %}
